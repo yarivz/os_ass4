@@ -219,7 +219,7 @@ getFreeBlocks(void)
 
 int
 blkcmp(struct buf* b1, struct buf* b2)
-{
+{//cprintf("in blkcmp\n");
   int i;
   for(i = 0; i<BSIZE; i++)
   {
@@ -246,7 +246,11 @@ deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int
     else
       a[b1Index] = b[b2Index];
   }
-  bfree(b1->dev, b1->sector);
+  int ref = getBlkRef(b1->sector);
+  if(ref > 1)
+    updateBlkRef(b1->sector,-1);
+  else if(ref == 1)
+    bfree(b1->dev, b1->sector);
 }
 
 int
@@ -259,9 +263,8 @@ dedup(void)
   struct superblock sb;
   readsb(1, &sb);
   ninodes = sb.ninodes;
-  
   while((ip1 = getNextInode()) != 0) //iterate over all the files in the system - outer file loop
-  {
+  {  cprintf("in first while ip1->inum = %d\n",ip1->inum);
     iChanged = 0;
     ilock(ip1);				//iterate over the i-th file's blocks and look for duplicate data
     if(ip1->addrs[NDIRECT])
@@ -271,57 +274,82 @@ dedup(void)
       indirects1 = NINDIRECT;
     }
     for(blockIndex1 = 0,found = 0; blockIndex1 < NDIRECT + indirects1; blockIndex1++,found=0) 		//get the first block - outer block loop
-    {
+    {cprintf("in first for blockIndex1 = %d\n",blockIndex1);
       if(blockIndex1<NDIRECT)							// in the same file
       {
 	if(ip1->addrs[blockIndex1])
 	{
 	  b1 = bread(ip1->dev,ip1->addrs[blockIndex1]);
-	  for(blockIndex2 = NDIRECT; blockIndex2 > blockIndex1  ; blockIndex2--) 		// compare direct to direct
+	  for(blockIndex2 = NDIRECT + indirects1-1; blockIndex2 > blockIndex1  ; blockIndex2--) 		// compare direct to rect
 	  {
-	    if(ip1->addrs[blockIndex1] && ip1->addrs[blockIndex2]) 		//make sure both blocks are valid
+	    if(blockIndex2 < NDIRECT)
 	    {
-	      b2 = bread(ip1->dev,ip1->addrs[blockIndex2]);
-	      if(blkcmp(b1,b2))
-	      {
-		deletedups(ip1,ip1,b1,b2,blockIndex1,blockIndex2,0,0);
-		brelse(b1);				// release the outer loop block
+	      if(ip1->addrs[blockIndex1] && ip1->addrs[blockIndex2]) 		//make sure both blocks are valid
+	      {//cprintf("in 2nd for if\n");
+		b2 = bread(ip1->dev,ip1->addrs[blockIndex2]);
+		//cprintf("before blkcmp 1\n");
+		if(blkcmp(b1,b2))
+		{//cprintf("after blkcmp\n");
+		  deletedups(ip1,ip1,b1,b2,blockIndex1,blockIndex2,0,0);
+		  brelse(b1);				// release the outer loop block
+		  brelse(b2);
+		  found = 1;
+		  iChanged = 1;
+		  break;
+		}
 		brelse(b2);
-		found = 1;
-		iChanged = 1;
-		break;
 	      }
-	      brelse(b2);
 	    }
+	    else if(a)
+	    {								//same file, direct to indirect block
+	      int blockIndex2Offset = blockIndex2 - NDIRECT;
+	      if(ip1->addrs[blockIndex1] && a[blockIndex2Offset])
+	      {
+		b2 = bread(ip1->dev,a[blockIndex2Offset]);//cprintf("before blkcmp 2\n");
+		if(blkcmp(b1,b2))
+		{
+		  deletedups(ip1,ip1,b1,b2,blockIndex1,blockIndex2Offset,0,a);
+		  brelse(b1);				// release the outer loop block
+		  brelse(b2);
+		  found = 1;
+		  iChanged = 1;
+		  break;
+		}
+		brelse(b2);
+	      }
+	    } // for blockindex2 < NINDIRECT in ip1
+	      
 	  } //for blockindex2 < NDIRECT in ip1
 	} //if blockindex1 != 0
 	else
-	{
+	{//cprintf("in 2nd else\n");
+	  //brelse(b1);
 	  b1 = 0;
 	  continue;
 	}
+      }
 	
-	if(b1 && a && !found)
-	{
-	  for(blockIndex2 = NINDIRECT-1; blockIndex2 >= 0 ; blockIndex2--)		// compare direct block to all the indirect
-	  {
-	    if(ip1->addrs[blockIndex1] && a[blockIndex2])
-	    {
-	      b2 = bread(ip1->dev,a[blockIndex2]);
-	      if(blkcmp(b1,b2))
-	      {
-		deletedups(ip1,ip1,b1,b2,blockIndex1,blockIndex2,0,a);
-		brelse(b1);				// release the outer loop block
-		brelse(b2);
-		found = 1;
-		iChanged = 1;
-		break;
-	      }
-	      brelse(b2);
-	    }
-	  } // for blockindex2 < NINDIRECT in ip1
-	} //if not found match, check INDIRECT
-      } // if blockindex1 is < NDIRECT
+// 	if(b1 && a && !found)
+// 	{//cprintf("in indirect 1st if\n");
+// 	  for(blockIndex2 = NINDIRECT-1; blockIndex2 >= 0 ; blockIndex2--)		// compare direct block to all the indirect
+// 	  {//cprintf("in indirect for\n");
+// 	    if(ip1->addrs[blockIndex1] && a[blockIndex2])
+// 	    {
+// 	      b2 = bread(ip1->dev,a[blockIndex2]);//cprintf("before blkcmp 2\n");
+// 	      if(blkcmp(b1,b2))
+// 	      {
+// 		deletedups(ip1,ip1,b1,b2,blockIndex1,blockIndex2,0,a);
+// 		brelse(b1);				// release the outer loop block
+// 		brelse(b2);
+// 		found = 1;
+// 		iChanged = 1;
+// 		break;
+// 	      }
+// 	      brelse(b2);
+// 	    }
+// 	  } // for blockindex2 < NINDIRECT in ip1
+// 	} //if not found match, check INDIRECT
+//       } // if blockindex1 is < NDIRECT
       else if(!found)					// in the same file
       {
 	if(a)
@@ -334,7 +362,7 @@ dedup(void)
 	    {
 	      if(a[blockIndex2])
 	      {
-		b2 = bread(ip1->dev,a[blockIndex2]);
+		b2 = bread(ip1->dev,a[blockIndex2]);//cprintf("before blkcmp 3\n");
 		if(blkcmp(b1,b2))
 		{
 		  deletedups(ip1,ip1,b1,b2,blockIndex1Offset,blockIndex2,a,a);	
@@ -350,6 +378,7 @@ dedup(void)
 	  } // if blockIndex1Offset in INDIRECT != 0
 	  else
 	  {
+	    //brelse(b1);
 	    b1 = 0;
 	    continue;
 	  }
@@ -368,7 +397,7 @@ dedup(void)
 	prevInum = ninodes-1;
 	
 	while((ip2 = getPrevInode(&prevInum)) != 0) 			//iterate over all the files in the system - outer file loop
-	{
+	{cprintf("ip2->inum = %d\n",ip2->inum);
 	  ilock(ip2);
 	  if(ip2->addrs[NDIRECT])
 	  {
@@ -376,62 +405,85 @@ dedup(void)
 	    b = (uint*)bp2->data;
 	    indirects2 = NINDIRECT;
 	  } // if ip2 has INDIRECT
-	  
-	  for(blockIndex2 = 0; blockIndex2 < NDIRECT + indirects2; blockIndex2++) 		//get the first block - outer block loop
-	  {
+	  cprintf("before 1st for\n");
+	  for(blockIndex2 = NDIRECT + indirects2 -1; blockIndex2 >= 0 ; blockIndex2--) 		//get the first block - outer block loop
+	  {//cprintf("in 1st for\n");
 	    if(blockIndex2<NDIRECT)
 	    {
 	      if(ip2->addrs[blockIndex2])
 	      {
-		b2 = bread(ip2->dev,ip2->addrs[blockIndex2]);
+		b2 = bread(ip2->dev,ip2->addrs[blockIndex2]);//cprintf("before blkcmp 4\n");
 		if(blkcmp(b1,b2))
 		{
 		  deletedups(ip1,ip2,b1,b2,blockIndex1Offset,blockIndex2,aSub,0);
+		  cprintf("*****************before 1st brelse direct\n"); 
 		  brelse(b1);				// release the outer loop block
-		  brelse(b2);
+		  cprintf("*****************after 1st brelse b1 direct\n"); 
+		  //brelse(b2);
+		  cprintf("*****************after 1st brelse b2 direct\n"); 
 		  found = 1;
 		  iChanged = 1;
 		  break;
-		}
+		}//cprintf("before 1st brelse\n");
 		brelse(b2);
+		//cprintf("after 1st brelse\n");
 	      } // if blockIndex2 in ip2
-	    } // if blockindex2 in ip2 < NDIRECT
-	    else if(!found)
-	    {
-	      if(b)
-	      {
-		int blockIndex2Offset = blockIndex2 - NDIRECT;
-		if(b[blockIndex2Offset])
+	    } // if blockindex2 in ip2 < NDIRECT 
+	    
+	    else if(b)
+	    {//cprintf("inside else if\n");
+	      int blockIndex2Offset = blockIndex2 - NDIRECT;
+	      if(b[blockIndex2Offset])
+	      {//cprintf("inside indirects2\n");
+		b2 = bread(ip2->dev,b[blockIndex2Offset]);//cprintf("before blkcmp 5\n");
+		if(blkcmp(b1,b2))
 		{
-		  b2 = bread(ip2->dev,b[blockIndex2Offset]);
-		  if(blkcmp(b1,b2))
-		  {
-		    deletedups(ip1,ip2,b1,b2,blockIndex1Offset,blockIndex2Offset,aSub,b);
-		    brelse(b1);				// release the outer loop block
-		    brelse(b2);
-		    found = 1;
-		    iChanged = 1;
-		    break;
-		  }
-		  brelse(b2);
-		} // if blockIndex2Offset in ip2 != 0
-	      }// if ip2 has INDIRECT
+		  deletedups(ip1,ip2,b1,b2,blockIndex1Offset,blockIndex2Offset,aSub,b);
+		  cprintf("*****************before 2nd brelse indirect\n"); 
+		  brelse(b1);				// release the outer loop block
+		  cprintf("*****************after 2nd brelse indirect\n"); 
+		  //brelse(b2);
+		  cprintf("*****************after 2nd brelse indirect\n"); 
+		  found = 1;
+		  iChanged = 1;
+		  break;
+		}//cprintf("before 2nd brelse\n");
+		brelse(b2);
+	      } // if blockIndex2Offset in ip2 != 0
 	    } // if not found and blockIndex2 > NDIRECT
 	  } //for blockindex2 from 0 to NDIRECT + NINDIRECT
+	  
 	  if(ip2->addrs[NDIRECT])
+	  {
+	    cprintf("before bp2 brelse\n");
 	    brelse(bp2);
+	    cprintf("after bp2 brelse\n"); 
+	  }
 	  
 	  iunlockput(ip2);
 	} //while ip2
-      }	  
-      brelse(b1);				// release the outer loop block
+      }
+      if(!found)
+      {
+	cprintf("*****************before 1st brelse\n"); 
+	brelse(b1);				// release the outer loop block
+	cprintf("*****************after 1st brelse\n"); 
+      }
     } //for blockindex1
         
     if(ip1->addrs[NDIRECT])
+    {
+      cprintf("*****************before bp1 brelse\n"); 
       brelse(bp1);
+      cprintf("*****************after bp1 brelse\n");
+    }
     
     if(iChanged)
+    {
+      begin_trans();
       iupdate(ip1);
+      commit_trans();
+    }
     iunlockput(ip1);
   } // while ip1
     

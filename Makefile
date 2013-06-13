@@ -167,6 +167,7 @@ UPROGS=\
 	_zombie\
 	_fileBlocks\
 	_freeBlocks\
+	_dedup\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

@@ -56,6 +56,8 @@ int             writei(struct inode*, char*, uint, uint);
 void		bfree(int, uint);
 struct inode*	getNextInode(void);
 struct inode*	getPrevInode(int*);
+void		updateBlkRef(uint , int);
+int		getBlkRef(uint);
 
 // ide.c
 void            ideinit(void);

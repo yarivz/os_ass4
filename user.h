@@ -24,6 +24,7 @@ int sleep(int);
 int uptime(void);
 int getFileBlocks(char* path);
 int getFreeBlocks(void);
+int dedup(void);
 
 // ulib.c
 int stat(char*, struct stat*);

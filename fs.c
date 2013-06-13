@@ -70,6 +70,7 @@ balloc(uint dev)
         log_write(bp);
         brelse(bp);
         bzero(dev, b + bi);
+	updateBlkRef(b+bi,1);
         return b + bi;
       }
     }
@@ -662,17 +663,19 @@ getNextInode(void)
   struct superblock sb;
 
   readsb(1, &sb);
-
+  cprintf("in getnextinode\n");
   for(inum = nextInum+1; inum < sb.ninodes-1; inum++)
-  {
+  {cprintf("in getnextinode for\n");
     bp = bread(1, IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum%IPB;
     if(dip->type == T_FILE)  // a file inode
     {
       nextInum = inum;
       ip = iget(1,inum);
+      brelse(bp);
       return ip;
     }
+    brelse(bp);
   }
   return 0;
 }
@@ -691,14 +694,57 @@ getPrevInode(int* prevInum)
     if(dip->type == T_FILE)  // a file inode
     {
       ip = iget(1,*prevInum);
+      brelse(bp);
+      (*prevInum)--;
       return ip;
     }
+    brelse(bp);
   }
   return 0;
 }
 
 
+void
+updateBlkRef(uint sector, int flag)
+{
+  struct buf *bp;
+  
+  if(sector < 512)
+  {
+    bp = bread(1,1024);
+    if(flag == 1)
+      bp->data[sector]++;
+    else if(flag == -1)
+      if(bp->data[sector] > 0)
+	bp->data[sector]--;
+    bwrite(bp);
+    brelse(bp);
+  }
+  else if(sector < 1024)
+  {
+    bp = bread(1,1025);
+    if(flag == 1)
+      bp->data[sector-512]++;
+    else if(flag == -1)
+      if(bp->data[sector-512] > 0)
+	bp->data[sector-512]--;
+    bwrite(bp);
+    brelse(bp);
+  }  
+}
 
-
-
+int
+getBlkRef(uint sector)
+{
+  struct buf *bp;
+  int ret = -1;
+  
+  if(sector < 512)
+    bp = bread(1,1024);
+  else if(sector < 1024)
+    bp = bread(1,1025);
+  ret = bp->data[sector];
+  brelse(bp);
+  return ret;
+}
 
