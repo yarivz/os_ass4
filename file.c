@@ -232,7 +232,7 @@ blkcmp(struct buf* b1, struct buf* b2)
 int
 dedup(void)
 {
-  int i,j,k,n;
+  int i,j,k,n,found=0;
   struct file f1, f2;
   struct inode* ip1, *ip2;
   struct buf *b1, *b2, *bp1, *bp2;
@@ -242,7 +242,7 @@ dedup(void)
   for(i=0; i < NFILE - 1; i++) //iterate over all the files in the system - outer file loop
   {
     f1 = ftable.file[i];
-    if(f1)
+    if(f1.ip)
     {
       ip1 = f1.ip;				//iterate over the i-th file's blocks and look for duplicate data
       if(ip1->addrs[NDIRECT])
@@ -250,62 +250,130 @@ dedup(void)
 	bp1 = bread(ip1->dev, ip1->addrs[NDIRECT]);
 	a = (uint*)bp1->data;
       }
-      for(j = 0; j < NDIRECT-1 ; j++) 		//get the first block - outer block loop
+      for(j = 0; j < NDIRECT + NINDIRECT && !found; j++) 		//get the first block - outer block loop
       {
-	for(k = NDIRECT; k > j  ; k--) 	// get the next block to compare - inner direct block loop
+	if(j<NDIRECT)
 	{
-	  if(ip1->addrs[j] && ip1->addrs[k]) 	//make sure both blocks are valid
+	  b1 = bread(ip1->dev,ip1->addrs[j]);
+	  for(k = NDIRECT; k > j  ; k--) 		// compare direct to direct
 	  {
-	    b1 = bread(ip1->dev,ip1->addrs[j]);
-	    b2 = bread(ip1->dev,ip1->addrs[k]);
-	    if(blkcmp(b1,b2)
-	      deletedups();			//TODO implement this
-	    brelse(b1);
-	    brelse(b2);
-	  }
-	}
-	if(a)
-	{
-	  for(n = NINDIRECT; n > 0 ; n--)		//inner direct -- indirect block loop
-	  {
-	    if(ip1->addrs[j] && a[n])
+	    if(ip1->addrs[j] && ip1->addrs[k]) 		//make sure both blocks are valid
 	    {
-	      b1 = bread(ip1->dev,ip1->addrs[j]);
-	      b2 = bread(ip1->dev,a[n]);
-	      if(blkcmp(b1,b2)
-		deletedups();	
+	      b2 = bread(ip1->dev,ip1->addrs[k]);
+	      if(blkcmp(b1,b2))
+	      {
+		deletedups();				//TODO implement this   
+		brelse(b1);				// release the outer loop block
+		found = 1;
+		break;
+	      }
+	      brelse(b2);
 	    }
 	  }
-	  brelse(b1);
-	  brelse(b2);
-	}
-	//TODO add loop to compare indirect to indirect blocks
-      }
-      for(j=NFILE - 1; j > i ; j--) //iterate over all the files in the system - get the next file - inner file loop
-      {
-	f2 = ftable.file[j];
-	if(f2)
-	{
-	  ip2 = f2.ip;				//iterate over the i-th file's blocks and look for duplicate data
-	  if(ip2->addrs[NDIRECT])
-	  {
-	    bp2 = bread(ip2->dev, ip2->addrs[NDIRECT]);
-	    b = (uint*)bp2->data;
-	  }
 	  
+	  if(a && !found)
+	  {
+	    for(n = NINDIRECT; n > 0 ; n--)		// compare direct block to all the indirect
+	    {
+	      if(ip1->addrs[j] && a[n])
+	      {
+		b2 = bread(ip1->dev,a[n]);
+		if(blkcmp(b1,b2))
+		{
+		  deletedups();	
+		  brelse(b1);				// release the outer loop block
+		  found = 1;
+		  break;
+		}
+		brelse(b2);
+	      }
+	    }
+	  }
+	}
+	else if(!found)
+	{
+	  if(a)
+	  {
+	    int m = j - NDIRECT;
+	    b1 = bread(ip1->dev,a[m]);
+	    for(n = NINDIRECT-1;n>m;n--)		// compare indirect to indirect
+	    {
+	      if(ip1->addrs[j] && a[m])
+	      {
+		b2 = bread(ip1->dev,a[n]);
+		if(blkcmp(b1,b2))
+		{
+		  deletedups();	
+		  brelse(b1);				// release the outer loop block
+		  found = 1;
+		  break;
+		}
+		brelse(b2);
+	      }
+	    }
+	  }
+	}
 	
-	
+	if(!found)
+	{
+	  for(j=NFILE - 1; j > i && !found; j--) //iterate over all the files in the system - get the next file - inner file loop
+	  {
+	    f2 = ftable.file[j];
+	    if(f2.ip)
+	    {
+	      ip2 = f2.ip;				//iterate over the i-th file's blocks and look for duplicate data
+	      if(ip2->addrs[NDIRECT])
+	      {
+		bp2 = bread(ip2->dev, ip2->addrs[NDIRECT]);
+		b = (uint*)bp2->data;
+	      }
+	      
+	      for(j = 0; j < NDIRECT + NINDIRECT; j++) 		//get the first block - outer block loop
+	      {
+		if(j<NDIRECT)
+		{
+		  b2 = bread(ip1->dev,ip1->addrs[j]);
+		  if(blkcmp(b1,b2))
+		  {
+		    deletedups();	
+		    brelse(b1);				// release the outer loop block
+		    found = 1;
+		    break;
+		  }
+		 brelse(b2);
+		}
+		else if(!found)
+		{
+		  if(a)
+		  {
+		    int m = j - NDIRECT;
+		    b2 = bread(ip1->dev,a[m]);
+		    if(blkcmp(b1,b2))
+		    {
+		      deletedups();	
+		      brelse(b1);				// release the outer loop block
+		      found = 1;
+		      break;
+		    }
+		 brelse(b2);
+		  }
+		}
+	      }
+	      
+	      if(ip2->addrs[NDIRECT])
+		brelse(bp2);
+	    }
+	  }
+	}	  
+	brelse(b1);				// release the outer loop block
       }
       
-      brelse(bp);
+      if(ip1->addrs[NDIRECT])
+	brelse(bp1);
     }
-    
-    
-    
   }
   
   
-  
-  
+  return 0;		
 }
 
