@@ -14,7 +14,7 @@
 int nblocks = 985;
 int nlog = LOGSIZE;
 int ninodes = 200;
-int size = 1024;
+int size = 1026;
 
 int fsfd;
 struct superblock sb;
@@ -88,9 +88,9 @@ main(int argc, char *argv[])
   freeblock = usedblocks;
 
   printf("used %d (bit %d ninode %zu) free %u log %u total %d\n", usedblocks,
-         bitblocks, ninodes/IPB + 1, freeblock, nlog, nblocks+usedblocks+nlog);
+         bitblocks, ninodes/IPB + 1, freeblock, nlog, nblocks+usedblocks+nlog+2);
 
-  assert(nblocks + usedblocks + nlog == size);
+  assert(nblocks + usedblocks + nlog +2== size);
 
   for(i = 0; i < nblocks + usedblocks + nlog + 2; i++)
     wsect(i, zeroes);
