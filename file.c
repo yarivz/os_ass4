@@ -340,7 +340,7 @@ dedup(void)
 		    found = 1;
 		    break;
 		  }
-		 brelse(b2);
+		  brelse(b2);
 		}
 		else if(!found)
 		{
@@ -355,7 +355,7 @@ dedup(void)
 		      found = 1;
 		      break;
 		    }
-		 brelse(b2);
+		    brelse(b2);
 		  }
 		}
 	      }
