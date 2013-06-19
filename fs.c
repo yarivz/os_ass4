@@ -76,7 +76,7 @@ balloc(uint dev)
 }
 
 // Free a disk block.
-static void
+void
 bfree(int dev, uint b)
 {
   struct buf *bp;

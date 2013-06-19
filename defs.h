@@ -34,6 +34,7 @@ int             filewrite(struct file*, char*, int n);
 struct file*	fileopen(char* path, int omode);
 int		getFileBlocks(char* path);
 int		getFreeBlocks(void);
+int		dedup(void);
 // fs.c
 void            readsb(int dev, struct superblock *sb);
 int             dirlink(struct inode*, char*, uint);
@@ -52,6 +53,7 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
+void		bfree(int, uint);
 
 // ide.c
 void            ideinit(void);
