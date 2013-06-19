@@ -344,10 +344,10 @@ dedup(void)
 		}
 		else if(!found)
 		{
-		  if(a)
+		  if(b)
 		  {
 		    int m = j - NDIRECT;
-		    b2 = bread(ip1->dev,a[m]);
+		    b2 = bread(ip1->dev,b[m]);
 		    if(blkcmp(b1,b2))
 		    {
 		      deletedups();	
@@ -372,8 +372,7 @@ dedup(void)
 	brelse(bp1);
     }
   }
-  
-  
+    
   return 0;		
 }
 
