@@ -273,7 +273,7 @@ dedup(void)
 	  
 	  if(a && !found)
 	  {
-	    for(n = NINDIRECT; n > 0 ; n--)		// compare direct block to all the indirect
+	    for(n = NINDIRECT-1; n >= 0 ; n--)		// compare direct block to all the indirect
 	    {
 	      if(ip1->addrs[j] && a[n])
 	      {
