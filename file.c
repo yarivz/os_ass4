@@ -229,13 +229,18 @@ blkcmp(struct buf* b1, struct buf* b2)
   return 1;  
 }
 
+void
+deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int b1Index,int b2Index)
+{
+}
+
 int
 dedup(void)
 {
-  int i,j,k,n,found=0;
+  int i,j,k,n,found=0,indirects1=0.indirects2=0;;
   struct file f1, f2;
-  struct inode* ip1, *ip2;
-  struct buf *b1, *b2, *bp1, *bp2;
+  struct inode* ip1=0, *ip2=0;
+  struct buf *b1=0, *b2=0, *bp1=0, *bp2=0;
   uint *a = 0, *b = 0;
   
   acquire(&ftable.lock);
@@ -249,29 +254,39 @@ dedup(void)
       {
 	bp1 = bread(ip1->dev, ip1->addrs[NDIRECT]);
 	a = (uint*)bp1->data;
+	indirects1 = NINDIRECT;
       }
-      for(j = 0; j < NDIRECT + NINDIRECT && !found; j++) 		//get the first block - outer block loop
+      for(j = 0,found = 0; j < NDIRECT + indirects1; j++) 		//get the first block - outer block loop
       {
-	if(j<NDIRECT)
+	if(j<NDIRECT)							// in the same file
 	{
-	  b1 = bread(ip1->dev,ip1->addrs[j]);
-	  for(k = NDIRECT; k > j  ; k--) 		// compare direct to direct
+	  if(ip1->addrs[j])
 	  {
-	    if(ip1->addrs[j] && ip1->addrs[k]) 		//make sure both blocks are valid
+	    b1 = bread(ip1->dev,ip1->addrs[j]);
+	    for(k = NDIRECT; k > j  ; k--) 		// compare direct to direct
 	    {
-	      b2 = bread(ip1->dev,ip1->addrs[k]);
-	      if(blkcmp(b1,b2))
+	      if(ip1->addrs[j] && ip1->addrs[k]) 		//make sure both blocks are valid
 	      {
-		deletedups();				//TODO implement this   
-		brelse(b1);				// release the outer loop block
-		found = 1;
-		break;
+		b2 = bread(ip1->dev,ip1->addrs[k]);
+		if(blkcmp(b1,b2))
+		{
+		  deletedups(ip1,ip1,b1,b2,int b1Index,int b2Index);
+		  brelse(b1);				// release the outer loop block
+		  brelse(b2);
+		  found = 1;
+		  break;
+		}
+		brelse(b2);
 	      }
-	      brelse(b2);
 	    }
 	  }
+	  else
+	  {
+	    b1 = 0;
+	    continue;
+	  }
 	  
-	  if(a && !found)
+	  if(b1 && a && !found)
 	  {
 	    for(n = NINDIRECT-1; n >= 0 ; n--)		// compare direct block to all the indirect
 	    {
@@ -280,8 +295,9 @@ dedup(void)
 		b2 = bread(ip1->dev,a[n]);
 		if(blkcmp(b1,b2))
 		{
-		  deletedups();	
+		  deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int b1Index,int b2Index);
 		  brelse(b1);				// release the outer loop block
+		  brelse(b2);
 		  found = 1;
 		  break;
 		}
@@ -290,31 +306,35 @@ dedup(void)
 	    }
 	  }
 	}
-	else if(!found)
+	else if(!found)					// in the same file
 	{
 	  if(a)
 	  {
 	    int m = j - NDIRECT;
-	    b1 = bread(ip1->dev,a[m]);
-	    for(n = NINDIRECT-1;n>m;n--)		// compare indirect to indirect
+	    if(a[m])
 	    {
-	      if(ip1->addrs[j] && a[m])
+	      b1 = bread(ip1->dev,a[m]);
+	      for(n = NINDIRECT-1;n>m;n--)		// compare indirect to indirect
 	      {
-		b2 = bread(ip1->dev,a[n]);
-		if(blkcmp(b1,b2))
+		if(a[n])
 		{
-		  deletedups();	
-		  brelse(b1);				// release the outer loop block
-		  found = 1;
-		  break;
+		  b2 = bread(ip1->dev,a[n]);
+		  if(blkcmp(b1,b2))
+		  {
+		    deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int b1Index,int b2Index);	
+		    brelse(b1);				// release the outer loop block
+		    brelse(b2);
+		    found = 1;
+		    break;
+		  }
+		  brelse(b2);
 		}
-		brelse(b2);
 	      }
 	    }
 	  }
 	}
 	
-	if(!found)
+	if(!found && b1)					// in other files
 	{
 	  for(j=NFILE - 1; j > i && !found; j--) //iterate over all the files in the system - get the next file - inner file loop
 	  {
@@ -326,36 +346,45 @@ dedup(void)
 	      {
 		bp2 = bread(ip2->dev, ip2->addrs[NDIRECT]);
 		b = (uint*)bp2->data;
+		indirects2 = NINDIRECT;
 	      }
 	      
-	      for(j = 0; j < NDIRECT + NINDIRECT; j++) 		//get the first block - outer block loop
+	      for(k = 0; k < NDIRECT + indirects2; k++) 		//get the first block - outer block loop
 	      {
-		if(j<NDIRECT)
+		if(k<NDIRECT)
 		{
-		  b2 = bread(ip1->dev,ip1->addrs[j]);
-		  if(blkcmp(b1,b2))
+		  if(ip1->addrs[k])
 		  {
-		    deletedups();	
-		    brelse(b1);				// release the outer loop block
-		    found = 1;
-		    break;
+		    b2 = bread(ip1->dev,ip1->addrs[k]);
+		    if(blkcmp(b1,b2))
+		    {
+		      deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int b1Index,int b2Index);
+		      brelse(b1);				// release the outer loop block
+		      brelse(b2);
+		      found = 1;
+		      break;
+		    }
+		    brelse(b2);
 		  }
-		  brelse(b2);
 		}
 		else if(!found)
 		{
 		  if(b)
 		  {
-		    int m = j - NDIRECT;
-		    b2 = bread(ip1->dev,b[m]);
-		    if(blkcmp(b1,b2))
+		    int m = k - NDIRECT;
+		    if(b[m])
 		    {
-		      deletedups();	
-		      brelse(b1);				// release the outer loop block
-		      found = 1;
-		      break;
+		      b2 = bread(ip1->dev,b[m]);
+		      if(blkcmp(b1,b2))
+		      {
+			deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int b1Index,int b2Index);
+			brelse(b1);				// release the outer loop block
+			brelse(b2);
+			found = 1;
+			break;
+		      }
+		      brelse(b2);
 		    }
-		    brelse(b2);
 		  }
 		}
 	      }
