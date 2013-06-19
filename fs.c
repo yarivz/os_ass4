@@ -23,6 +23,9 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
 
+int nextInum = 0;
+int prevInum = 0;
+
 // Read the super block.
 void
 readsb(int dev, struct superblock *sb)
@@ -648,3 +651,54 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
+
+struct inode*
+getNextInode(void)
+{
+  int inum;
+  struct buf *bp;
+  struct dinode *dip;
+  struct inode* ip;
+  struct superblock sb;
+
+  readsb(1, &sb);
+
+  for(inum = nextInum+1; inum < sb.ninodes-1; inum++)
+  {
+    bp = bread(1, IBLOCK(inum));
+    dip = (struct dinode*)bp->data + inum%IPB;
+    if(dip->type == T_FILE)  // a file inode
+    {
+      nextInum = inum;
+      ip = iget(1,inum);
+      return ip;
+    }
+  }
+  return 0;
+}
+
+struct inode*
+getPrevInode(int* prevInum)
+{
+  struct buf *bp;
+  struct dinode *dip;
+  struct inode* ip;
+   
+  for(; (*prevInum) > nextInum ; (*prevInum)--)
+  {
+    bp = bread(1, IBLOCK(*prevInum));
+    dip = (struct dinode*)bp->data + (*prevInum)%IPB;
+    if(dip->type == T_FILE)  // a file inode
+    {
+      ip = iget(1,*prevInum);
+      return ip;
+    }
+  }
+  return 0;
+}
+
+
+
+
+
+

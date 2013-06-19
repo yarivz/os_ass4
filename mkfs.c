@@ -92,7 +92,7 @@ main(int argc, char *argv[])
 
   assert(nblocks + usedblocks + nlog == size);
 
-  for(i = 0; i < nblocks + usedblocks + nlog; i++)
+  for(i = 0; i < nblocks + usedblocks + nlog + 2; i++)
     wsect(i, zeroes);
 
   memset(buf, 0, sizeof(buf));
