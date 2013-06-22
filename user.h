@@ -25,6 +25,7 @@ int uptime(void);
 int getFileBlocks(char* path);
 int getFreeBlocks(void);
 int dedup(void);
+int getSharedBlocksRate(void);
 
 // ulib.c
 int stat(char*, struct stat*);

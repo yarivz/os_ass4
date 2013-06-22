@@ -168,6 +168,7 @@ UPROGS=\
 	_fileBlocks\
 	_freeBlocks\
 	_dedup\
+	_sharedBlocksRate\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

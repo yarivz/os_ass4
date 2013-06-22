@@ -663,14 +663,14 @@ getNextInode(void)
   struct superblock sb;
 
   readsb(1, &sb);
-  cprintf("in getnextinode\n");
   for(inum = nextInum+1; inum < sb.ninodes; inum++)
-  {cprintf("in getnextinode for\n");
+  {
     bp = bread(1, IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum%IPB;
     if(dip->type == T_FILE)  // a file inode
     {
       nextInum = inum;
+      //cprintf("next: nextInum = %d\n",nextInum);
       ip = iget(1,inum);
       brelse(bp);
       return ip;
@@ -695,7 +695,9 @@ getPrevInode(int* prevInum)
     {
       ip = iget(1,*prevInum);
       brelse(bp);
+      //cprintf("prev: before --, prevInum = %d\n",*prevInum);
       (*prevInum)--;
+      //cprintf("prev: after --, prevInum = %d\n",*prevInum);
       return ip;
     }
     brelse(bp);
@@ -748,3 +750,8 @@ getBlkRef(uint sector)
   return ret;
 }
 
+void
+zeroNextInum(void)
+{
+  nextInum = 0;
+}

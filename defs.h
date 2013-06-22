@@ -35,6 +35,7 @@ struct file*	fileopen(char* path, int omode);
 int		getFileBlocks(char* path);
 int		getFreeBlocks(void);
 int		dedup(void);
+int		getSharedBlocksRate(void);
 // fs.c
 void            readsb(int dev, struct superblock *sb);
 int             dirlink(struct inode*, char*, uint);
@@ -58,6 +59,7 @@ struct inode*	getNextInode(void);
 struct inode*	getPrevInode(int*);
 void		updateBlkRef(uint , int);
 int		getBlkRef(uint);
+void		zeroNextInum(void);
 
 // ide.c
 void            ideinit(void);

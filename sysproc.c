@@ -107,8 +107,7 @@ sys_getFreeBlocks(void)
 int
 sys_getSharedBlocksRate(void)
 {
-  return 0;
-  
+  return getSharedBlocksRate();
 }
 
 int
