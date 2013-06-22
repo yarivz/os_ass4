@@ -250,7 +250,11 @@ deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int
   if(ref > 1)
     updateBlkRef(b1->sector,-1);
   else if(ref == 1)
+  {
+    begin_trans();
     bfree(b1->dev, b1->sector);
+    commit_trans();
+  }
 }
 
 int
@@ -263,7 +267,7 @@ dedup(void)
   struct superblock sb;
   readsb(1, &sb);
   ninodes = sb.ninodes;
-  while((ip1 = getNextInode()) != 0) //iterate over all the files in the system - outer file loop
+  while((ip1 = getNextInode()) != 0) //iterate over all the dinodes in the system - outer file loop
   {  cprintf("in first while ip1->inum = %d\n",ip1->inum);
     iChanged = 0;
     ilock(ip1);				//iterate over the i-th file's blocks and look for duplicate data

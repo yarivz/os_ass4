@@ -664,7 +664,7 @@ getNextInode(void)
 
   readsb(1, &sb);
   cprintf("in getnextinode\n");
-  for(inum = nextInum+1; inum < sb.ninodes-1; inum++)
+  for(inum = nextInum+1; inum < sb.ninodes; inum++)
   {cprintf("in getnextinode for\n");
     bp = bread(1, IBLOCK(inum));
     dip = (struct dinode*)bp->data + inum%IPB;
