@@ -102,6 +102,7 @@ extern int sys_getFileBlocks(void);
 extern int sys_getFreeBlocks(void);
 extern int sys_getSharedBlocksRate(void);
 extern int sys_dedup(void);
+extern int sys_getBlkRef(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -129,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_getFreeBlocks] sys_getFreeBlocks,
 [SYS_getSharedBlocksRate] sys_getSharedBlocksRate,
 [SYS_dedup]   sys_dedup,
+[SYS_getBlkRef]  sys_getBlkRef,
 };
 
 void

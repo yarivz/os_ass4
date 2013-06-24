@@ -25,3 +25,4 @@
 #define SYS_getFreeBlocks 23
 #define SYS_getSharedBlocksRate 24
 #define SYS_dedup 25
+#define SYS_getBlkRef 26

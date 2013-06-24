@@ -94,7 +94,7 @@ main(int argc, char *argv[])
 
   for(i = 0; i < nblocks + usedblocks + nlog + 2; i++)
     wsect(i, zeroes);
-
+  
   memset(buf, 0, sizeof(buf));
   memmove(buf, &sb, sizeof(sb));
   wsect(1, buf);

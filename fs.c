@@ -498,7 +498,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 int
 writei(struct inode *ip, char *src, uint off, uint n)
 {
-  uint tot, m;
+  uint tot, m,ref;
   struct buf *bp;
 
   if(ip->type == T_DEV){
@@ -514,8 +514,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
 
   for(tot=0; tot<n; tot+=m, off+=m, src+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
-    if(getBlkRef(bp->sector) > 0)
-    {//cprintf ("inside\n");
+    if((ref = getBlkRef(bp->sector)) > 0)
+    {cprintf ("block = %d, ref = %d\n",bp->sector,ref);
       uint old = bp->sector;
       updateBlkRef(old,-1);
       brelse(bp);
@@ -751,7 +751,7 @@ void
 updateBlkRef(uint sector, int flag)
 {
   struct buf *bp;
-  
+  cprintf("updateblkref = %d\n",sector);
   if(sector < 512)
   {
     bp = bread(1,1024);
@@ -786,7 +786,8 @@ getBlkRef(uint sector)
     bp = bread(1,1024);
   else if(sector < 1024)
     bp = bread(1,1025);
-  ret = bp->data[sector];
+  cprintf("getblkref sector = %d, ref = %d\n",sector,bp->data[sector]);
+  ret = (uchar)bp->data[sector];
   brelse(bp);
   return ret;
 }

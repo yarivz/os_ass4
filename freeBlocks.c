@@ -9,6 +9,10 @@
 int 
 main(void)
 {
-   printf(1,"No. of free blocks = %d\n",getFreeBlocks());
+  int i;
+  for(i = 0; i < 1024; i++)
+      printf(1,"block = %d, ref = %d\n",i,getBlkRef(i));
+  
+  printf(1,"No. of free blocks = %d\n",getFreeBlocks());
   exit();
 }

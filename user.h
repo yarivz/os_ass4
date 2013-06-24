@@ -26,6 +26,7 @@ int getFileBlocks(char* path);
 int getFreeBlocks(void);
 int dedup(void);
 int getSharedBlocksRate(void);
+int getBlkRef(uint sector);
 
 // ulib.c
 int stat(char*, struct stat*);

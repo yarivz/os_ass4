@@ -115,3 +115,12 @@ sys_dedup(void)
 {
   return dedup();
 }
+
+int
+sys_getBlkRef(void)
+{
+  int n;
+  if(argint(0, &n) < 0)
+    return -1;
+  return getBlkRef(n);
+}
