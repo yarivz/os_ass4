@@ -26,6 +26,31 @@ static void itrunc(struct inode*);
 int nextInum = 0;
 int prevInum = 0;
 
+void
+replaceBlk(struct inode* ip, uint old, uint new)
+{
+  int i, j;
+  struct buf *bp;
+  uint *a;
+
+  for(i = 0; i < NDIRECT; i++){
+    if(ip->addrs[i] && ip->addrs[i] == old){
+      ip->addrs[i] = new;
+    }
+  }
+  
+  if(ip->addrs[NDIRECT]){
+    bp = bread(ip->dev, ip->addrs[NDIRECT]);
+    a = (uint*)bp->data;
+    for(j = 0; j < NINDIRECT; j++){
+      if(a[j] && a[j] == old)
+	a[j] = new;
+    }
+    brelse(bp);
+  }
+}
+  
+
 // Read the super block.
 void
 readsb(int dev, struct superblock *sb)
@@ -70,7 +95,6 @@ balloc(uint dev)
         log_write(bp);
         brelse(bp);
         bzero(dev, b + bi);
-	updateBlkRef(b+bi,1);
         return b + bi;
       }
     }
@@ -401,7 +425,10 @@ itrunc(struct inode *ip)
 
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
-      bfree(ip->dev, ip->addrs[i]);
+      if(getBlkRef(ip->addrs[i]) > 0)
+	updateBlkRef(ip->addrs[i],-1);
+      else
+	bfree(ip->dev, ip->addrs[i]);
       ip->addrs[i] = 0;
     }
   }
@@ -411,7 +438,12 @@ itrunc(struct inode *ip)
     a = (uint*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
       if(a[j])
-        bfree(ip->dev, a[j]);
+      {
+	if(getBlkRef(a[j]) > 0)
+	  updateBlkRef(a[j],-1);
+	else
+	  bfree(ip->dev, a[j]);
+      }
     }
     brelse(bp);
     bfree(ip->dev, ip->addrs[NDIRECT]);
@@ -482,6 +514,15 @@ writei(struct inode *ip, char *src, uint off, uint n)
 
   for(tot=0; tot<n; tot+=m, off+=m, src+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
+    if(getBlkRef(bp->sector) > 0)
+    {//cprintf ("inside\n");
+      uint old = bp->sector;
+      updateBlkRef(old,-1);
+      brelse(bp);
+      uint new = balloc(ip->dev);
+      replaceBlk(ip,old,new);
+      bp = bread(ip->dev,new);
+    }
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);
     log_write(bp);
@@ -755,3 +796,6 @@ zeroNextInum(void)
 {
   nextInum = 0;
 }
+
+
+  

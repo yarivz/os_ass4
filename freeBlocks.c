@@ -9,6 +9,6 @@
 int 
 main(void)
 {
-  getFreeBlocks();
+   printf(1,"No. of free blocks = %d\n",getFreeBlocks());
   exit();
 }

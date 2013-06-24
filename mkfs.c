@@ -237,6 +237,10 @@ balloc(int used)
   for(i = 0; i < used; i++){
     buf[i/8] = buf[i/8] | (0x1 << (i%8));
   }
+  for(i = 1024; i < 1026; i++){
+    buf[i/8] = buf[i/8] | (0x1 << (i%8));
+  }
+  
   printf("balloc: write bitmap block at sector %zu\n", ninodes/IPB + 3);
   wsect(ninodes / IPB + 3, buf);
 }
