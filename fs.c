@@ -423,7 +423,6 @@ itrunc(struct inode *ip)
   int i, j;
   struct buf *bp;
   uint *a;
-
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
       if(getBlkRef(ip->addrs[i]) > 0)
@@ -519,10 +518,13 @@ writei(struct inode *ip, char *src, uint off, uint n)
     {
       uint old = bp->sector;
       updateBlkRef(old,-1);
+      char tmp[BSIZE];
+      memmove(tmp,bp->data, BSIZE);
       brelse(bp);
       uint new = balloc(ip->dev);
       replaceBlk(ip,old,new);
       bp = bread(ip->dev,new);
+      memmove(bp->data,tmp, BSIZE);
     }
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);

@@ -264,7 +264,7 @@ deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int
 int
 dedup(void)
 {
-  cprintf("\nstarting de-duplication: \n");
+  cprintf("\nperforming de-duplication, please wait... \n");
   int blockIndex1,blockIndex2,found=0,indirects1=0,indirects2=0,ninodes=0,prevInum=0;
   struct inode* ip1=0, *ip2=0;
   struct buf *b1=0, *b2=0, *bp1=0, *bp2=0;
@@ -275,7 +275,6 @@ dedup(void)
   zeroNextInum();
   while((ip1 = getNextInode()) != 0) //iterate over all the dinodes in the system - outer file loop
   {  
-    cprintf("*\n");
     indirects1=0;
     directChanged = 0;
     indirectChanged = 0;
@@ -478,7 +477,7 @@ getSharedBlocksRate(void)
   struct superblock sb;
   readsb(1, &sb);
   total = sb.nblocks - getFreeBlocks();
-  
+
   for(i=0;i<BSIZE;i++)
   {
     if(bp1->data[i] > 0)
@@ -486,6 +485,8 @@ getSharedBlocksRate(void)
     if(bp2->data[i] > 0)
       saved += bp2->data[i];
   }
+  brelse(bp1);
+  brelse(bp2);
   
   total += saved;
   
@@ -496,6 +497,8 @@ getSharedBlocksRate(void)
   for(i=10;i!=100000;i*=10)
   {
     digit = res*i;
+    while(digit >= 10)
+      digit %=10;
     cprintf("%d",digit);
   }
   cprintf("\n");
