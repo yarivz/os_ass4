@@ -60,6 +60,7 @@ struct inode*	getPrevInode(int*);
 void		updateBlkRef(uint , int);
 int		getBlkRef(uint);
 void		zeroNextInum(void);
+uint		getRefCount(uint);
 
 // ide.c
 void            ideinit(void);

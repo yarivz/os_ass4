@@ -278,7 +278,7 @@ main(void)
      26d:	83 ec 20             	sub    $0x20,%esp
   static char buf[100];
   int fd;
-  
+
   // Assumes three file descriptors open.
   while((fd = open("console", O_RDWR)) >= 0){
      270:	eb 19                	jmp    28b <main+0x24>
@@ -300,7 +300,7 @@ main(void)
 {
   static char buf[100];
   int fd;
-  
+
   // Assumes three file descriptors open.
   while((fd = open("console", O_RDWR)) >= 0){
      28b:	c7 44 24 04 02 00 00 	movl   $0x2,0x4(%esp)

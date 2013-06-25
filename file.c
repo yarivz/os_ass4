@@ -264,6 +264,7 @@ deletedups(struct inode* ip1,struct inode* ip2,struct buf *b1,struct buf *b2,int
 int
 dedup(void)
 {
+  cprintf("\nstarting de-duplication: \n");
   int blockIndex1,blockIndex2,found=0,indirects1=0,indirects2=0,ninodes=0,prevInum=0;
   struct inode* ip1=0, *ip2=0;
   struct buf *b1=0, *b2=0, *bp1=0, *bp2=0;
@@ -274,6 +275,7 @@ dedup(void)
   zeroNextInum();
   while((ip1 = getNextInode()) != 0) //iterate over all the dinodes in the system - outer file loop
   {  
+    cprintf("*\n");
     indirects1=0;
     directChanged = 0;
     indirectChanged = 0;
@@ -463,7 +465,6 @@ dedup(void)
     }
     iunlockput(ip1);
   } // while ip1
-    
   return 0;		
 }
 
@@ -472,8 +473,8 @@ getSharedBlocksRate(void)
 {
   int i,digit;
   int saved = 0,total = 0;
-  struct buf* bp1 = bread(1,1024);
-  struct buf* bp2 = bread(1,1025);
+  struct buf* bp1 = bread(1,getRefCount(1));
+  struct buf* bp2 = bread(1,getRefCount(2));
   struct superblock sb;
   readsb(1, &sb);
   total = sb.nblocks - getFreeBlocks();

@@ -75,6 +75,7 @@ main(void)
       exit();
   a4:	e8 cf 02 00 00       	call   378 <exit>
     }
+    
     if(pid == 0){
   a9:	83 7c 24 1c 00       	cmpl   $0x0,0x1c(%esp)
   ae:	75 41                	jne    f1 <main+0xf1>

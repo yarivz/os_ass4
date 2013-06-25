@@ -52,7 +52,7 @@ static void recover_from_log(void);
 
 void
 initlog(void)
-{
+{ 
   if (sizeof(struct logheader) >= BSIZE)
     panic("initlog: too big logheader");
 
@@ -63,6 +63,8 @@ initlog(void)
   log.size = sb.nlog;
   log.dev = ROOTDEV;
   recover_from_log();
+  
+  
 }
 
 // Copy committed blocks from log to their home location

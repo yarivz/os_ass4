@@ -85,14 +85,17 @@ main(int argc, char *argv[])
 
   bitblocks = size/(512*8) + 1;
   usedblocks = ninodes / IPB + 3 + bitblocks;
+  sb.refCount1 = usedblocks;
+  sb.refCount2 = usedblocks+1;
+  usedblocks += 2;
   freeblock = usedblocks;
 
   printf("used %d (bit %d ninode %zu) free %u log %u total %d\n", usedblocks,
-         bitblocks, ninodes/IPB + 1, freeblock, nlog, nblocks+usedblocks+nlog+2);
+         bitblocks, ninodes/IPB + 1, freeblock, nlog, nblocks+usedblocks+nlog);
 
-  assert(nblocks + usedblocks + nlog +2== size);
+  assert(nblocks + usedblocks + nlog== size);
 
-  for(i = 0; i < nblocks + usedblocks + nlog + 2; i++)
+  for(i = 0; i < nblocks + usedblocks + nlog; i++)
     wsect(i, zeroes);
   
   memset(buf, 0, sizeof(buf));
@@ -235,9 +238,6 @@ balloc(int used)
   assert(used < 512*8);
   bzero(buf, 512);
   for(i = 0; i < used; i++){
-    buf[i/8] = buf[i/8] | (0x1 << (i%8));
-  }
-  for(i = 1024; i < 1026; i++){
     buf[i/8] = buf[i/8] | (0x1 << (i%8));
   }
   

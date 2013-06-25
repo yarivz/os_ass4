@@ -25,6 +25,7 @@ static void itrunc(struct inode*);
 
 int nextInum = 0;
 int prevInum = 0;
+uint refCount1,refCount2;
 
 void
 replaceBlk(struct inode* ip, uint old, uint new)
@@ -515,7 +516,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
   for(tot=0; tot<n; tot+=m, off+=m, src+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
     if((ref = getBlkRef(bp->sector)) > 0)
-    {cprintf ("block = %d, ref = %d\n",bp->sector,ref);
+    {
       uint old = bp->sector;
       updateBlkRef(old,-1);
       brelse(bp);
@@ -711,7 +712,6 @@ getNextInode(void)
     if(dip->type == T_FILE)  // a file inode
     {
       nextInum = inum;
-      //cprintf("next: nextInum = %d\n",nextInum);
       ip = iget(1,inum);
       brelse(bp);
       return ip;
@@ -736,9 +736,7 @@ getPrevInode(int* prevInum)
     {
       ip = iget(1,*prevInum);
       brelse(bp);
-      //cprintf("prev: before --, prevInum = %d\n",*prevInum);
       (*prevInum)--;
-      //cprintf("prev: after --, prevInum = %d\n",*prevInum);
       return ip;
     }
     brelse(bp);
@@ -746,15 +744,30 @@ getPrevInode(int* prevInum)
   return 0;
 }
 
+uint
+getRefCount(uint ref)
+{
+  if(refCount1==0)
+  {
+    struct superblock sb;
+    readsb(1,&sb);
+    refCount1 = sb.refCount1;
+    refCount2 = sb.refCount2;
+  }
+  
+  if(ref==1)
+    return refCount1;
+  else
+    return refCount2;
+}
 
 void
 updateBlkRef(uint sector, int flag)
 {
   struct buf *bp;
-  cprintf("updateblkref = %d\n",sector);
-  if(sector < 512)
+  if(sector < BSIZE)
   {
-    bp = bread(1,1024);
+    bp = bread(1,getRefCount(1));
     if(flag == 1)
       bp->data[sector]++;
     else if(flag == -1)
@@ -763,14 +776,14 @@ updateBlkRef(uint sector, int flag)
     bwrite(bp);
     brelse(bp);
   }
-  else if(sector < 1024)
+  else if(sector < BSIZE*2)
   {
-    bp = bread(1,1025);
+    bp = bread(1,getRefCount(2));
     if(flag == 1)
-      bp->data[sector-512]++;
+      bp->data[sector-BSIZE]++;
     else if(flag == -1)
-      if(bp->data[sector-512] > 0)
-	bp->data[sector-512]--;
+      if(bp->data[sector-BSIZE] > 0)
+	bp->data[sector-BSIZE]--;
     bwrite(bp);
     brelse(bp);
   }  
@@ -780,14 +793,16 @@ int
 getBlkRef(uint sector)
 {
   struct buf *bp;
-  int ret = -1;
+  int ret = -1,offset = 0;
   
-  if(sector < 512)
-    bp = bread(1,1024);
-  else if(sector < 1024)
-    bp = bread(1,1025);
-  cprintf("getblkref sector = %d, ref = %d\n",sector,bp->data[sector]);
-  ret = (uchar)bp->data[sector];
+  if(sector < BSIZE)
+    bp = bread(1,getRefCount(1));
+  else if(sector < BSIZE*2)
+  {
+    bp = bread(1,getRefCount(2));
+    offset = BSIZE;
+  }
+  ret = (uchar)bp->data[sector-offset];
   brelse(bp);
   return ret;
 }

@@ -17,6 +17,8 @@ struct superblock {
   uint nblocks;      // Number of data blocks
   uint ninodes;      // Number of inodes.
   uint nlog;         // Number of log blocks
+  uint refCount1;
+  uint refCount2;
 };
 
 #define NDIRECT 12

@@ -99,7 +99,7 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  p->state = RUNNABLE;
+  p->state = RUNNABLE;  
 }
 
 // Grow current process's memory by n bytes.

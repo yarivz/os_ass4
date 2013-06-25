@@ -146,7 +146,7 @@ main(void)
 {
   static char buf[100];
   int fd;
-  
+
   // Assumes three file descriptors open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
